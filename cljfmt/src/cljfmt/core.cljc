@@ -35,6 +35,14 @@
   #?(:clj  (fn [^String a ^String b] (.contains a b))
      :cljs str/includes?))
 
+(defn- find-all [zloc p?]
+  (loop [matches []
+         zloc zloc]
+    (if-let [zloc (z/find-next zloc zip/next p?)]
+      (recur (conj matches zloc)
+             (zip/next zloc))
+      matches)))
+
 (defn- edit-all [zloc p? f]
   (loop [zloc (if (p? zloc) (f zloc) zloc)]
     (if-let [zloc (z/find-next zloc zip/next p?)]
