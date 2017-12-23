@@ -260,8 +260,9 @@
 
 (defn- indent-order [[key _]]
   (cond
-    (symbol? key) (str 0 key)
-    (pattern? key) (str 1 key)))
+    (and (symbol? key) (namespace key)) (str 0 key)
+    (symbol? key) (str 1 key)
+    (pattern? key) (str 2 key)))
 
 (defn- custom-indent [zloc indents]
   (if (empty? indents)
