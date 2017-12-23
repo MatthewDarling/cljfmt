@@ -135,12 +135,14 @@ that are merged with the defaults, you can use the `:replace` hint:
 
 * `:alias-map` -
   a map of namespace alias strings to fully qualified namespace
-  names. This option is unnecessary in most usecases, because `cljfmt`
-  can compute the alias map from an `ns` declaration. However, it is
-  useful for providing namespace-sensitive indentation of EDN files,
-  or if you run `cljfmt` as a CLJS library.
+  names. This option is unnecessary in almost all cases, because
+  `cljfmt` can compute the alias map from an `ns`
+  declaration. However, it can't do that when used as a CLJS library,
+  or when indenting something with no `ns` declaration like an EDN
+  file. Even in those situations, you only need this option when using
+  indentation rules that rely on the fully qualified symbol name.
 
-  Should you need to use this option, it should look like this:
+  If you definitely need to configure this, it should look like this:
 
   ```clojure
   :cljfmt {:indents {org.me/foo [[:inner 0]]}
