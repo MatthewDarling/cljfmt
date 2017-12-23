@@ -64,7 +64,13 @@
     (is (= (reformat-string "(t/defn foo [x]\n(+ x 1))")
            "(t/defn foo [x]\n  (+ x 1))"))
     (is (= (reformat-string "(t/defrecord Foo [x]\nCloseable\n(close [_]\n(prn x)))")
-           "(t/defrecord Foo [x]\n  Closeable\n  (close [_]\n    (prn x)))")))
+           "(t/defrecord Foo [x]\n  Closeable\n  (close [_]\n    (prn x)))"))
+    (is (= (reformat-string "(ns example\n(:require [thing.core :as t]))\n\n(t/defn foo [x]\n(+ x 1))\n\n(defn foo [x]\n(+ x 1))"
+                            {:indents {'thing.core/defn [[:inner 0]]}})
+           "(ns example\n    (:require [thing.core :as t]))\n\n(t/defn foo [x]\n  (+ x 1))\n\n(defn foo [x]\n      (+ x 1))"))
+    (is (= (reformat-string "(ns example\n(:require [thing.core :as t]))\n\n(t/defrecord Foo [x]\nCloseable\n(close [_]\n(prn x)))\n\n(defrecord Foo [x]\nCloseable\n(close [_]\n(prn x)))"
+                            {:indents {'thing.core/defrecord [[:inner 0]]}})
+           "(ns example\n    (:require [thing.core :as t]))\n\n(t/defrecord Foo [x]\n  Closeable\n  (close [_]\n         (prn x)))\n\n(defrecord Foo [x]\n           Closeable\n           (close [_]\n                  (prn x)))")))
 
   (testing "function #() syntax"
     (is (= (reformat-string "#(while true\n(println :foo))")
