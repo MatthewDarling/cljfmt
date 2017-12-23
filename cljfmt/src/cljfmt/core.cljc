@@ -333,34 +333,38 @@
       (cond-> (:remove-trailing-whitespace? opts true)
         remove-trailing-whitespace)))
 
-(defn- require-node?
-  [node]
-  (and (some-> node z/up z/child-sexprs first (= 'ns))
-       (some-> node z/child-sexprs first (= :require))))
+#?(:clj
+   (defn- require-node?
+     [node]
+     (and (some-> node z/up z/child-sexprs first (= 'ns))
+          (some-> node z/child-sexprs first (= :require)))))
 
-(defn- as-node?
-  [node]
-  (and (= :token (z/tag node))
-       (= :as (z/sexpr node))))
+#?(:clj
+   (defn- as-node?
+     [node]
+     (and (= :token (z/tag node))
+          (= :as (z/sexpr node)))))
 
-(defn- as-zloc->alias-mapping
-  [as-zloc]
-  {(some-> as-zloc z/right z/sexpr str)
-   (some-> as-zloc z/left z/sexpr str)})
+#?(:clj
+   (defn- as-zloc->alias-mapping
+     [as-zloc]
+     {(some-> as-zloc z/right z/sexpr str)
+      (some-> as-zloc z/left z/sexpr str)}))
 
-(defn- alias-map-for-form
-  [form]
-  (when-let [require-zloc (-> form
-                              z/edn
-                              z/next
-                              (z/find require-node?))]
-    (->> (find-all require-zloc as-node?)
-         (map as-zloc->alias-mapping)
-         (apply merge))))
+#?(:clj
+   (defn- alias-map-for-form
+     [form]
+     (when-let [require-zloc (-> form
+                                 z/edn
+                                 z/next
+                                 (z/find require-node?))]
+       (->> (find-all require-zloc as-node?)
+            (map as-zloc->alias-mapping)
+            (apply merge)))))
 
 (defn reformat-string [form-string & [options]]
   (let [parsed-form (p/parse-string-all form-string)
-        alias-map (alias-map-for-form parsed-form)]
+        alias-map #?(:clj (alias-map-for-form parsed-form) :cljs {})]
     (-> parsed-form
         (reformat-form (cond-> options
                          alias-map (assoc :alias-map alias-map)))
