@@ -208,6 +208,13 @@
   (and (> depth 0)
        (= idx (index-of (nth (iterate z/up zloc) (dec depth))))))
 
+(defn- fully-qualify-symbol [possible-sym alias-map]
+  (if-let [ns-string (and (symbol? possible-sym)
+                          (namespace possible-sym))]
+    (symbol (get alias-map ns-string ns-string)
+            (name possible-sym))
+    possible-sym))
+
 (defn- inner-indent [zloc key depth idx]
   (let [top (nth (iterate z/up zloc) depth)]
     (if (and (indent-matches? key (remove-namespace (form-symbol top)))
