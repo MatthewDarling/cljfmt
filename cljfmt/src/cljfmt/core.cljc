@@ -215,9 +215,10 @@
             (name possible-sym))
     possible-sym))
 
-(defn- inner-indent [zloc key depth idx]
+(defn- inner-indent [zloc key depth idx alias-map]
   (let [top (nth (iterate z/up zloc) depth)]
-    (if (and (indent-matches? key (remove-namespace (form-symbol top)))
+    (if (and (or (indent-matches? key (fully-qualify-symbol (form-symbol top) alias-map))
+                 (indent-matches? key (remove-namespace (form-symbol top))))
              (or (nil? idx) (index-matches-top-argument? zloc depth idx)))
       (let [zup (z/up zloc)]
         (+ (margin zup) (indent-width zup))))))
@@ -234,11 +235,12 @@
       (or (zlinebreak? zloc) (comment? zloc)))
     true))
 
-(defn- block-indent [zloc key idx]
-  (if (indent-matches? key (remove-namespace (form-symbol zloc)))
+(defn- block-indent [zloc key idx alias-map]
+  (if (or (indent-matches? key (fully-qualify-symbol (form-symbol zloc) alias-map))
+          (indent-matches? key (remove-namespace (form-symbol zloc))))
     (if (and (some-> zloc (nth-form (inc idx)) first-form-in-line?)
              (> (index-of zloc) idx))
-      (inner-indent zloc key 0 nil)
+      (inner-indent zloc key 0 nil alias-map)
       (list-indent zloc))))
 
 (def default-indents
@@ -247,16 +249,16 @@
          (read-resource "cljfmt/indents/fuzzy.clj")))
 
 (defmulti ^:private indenter-fn
-  (fn [sym [type & args]] type))
+  (fn [sym alias-map [type & args]] type))
 
-(defmethod indenter-fn :inner [sym [_ depth idx]]
-  (fn [zloc] (inner-indent zloc sym depth idx)))
+(defmethod indenter-fn :inner [sym alias-map [_ depth idx]]
+  (fn [zloc] (inner-indent zloc sym depth idx alias-map)))
 
-(defmethod indenter-fn :block [sym [_ idx]]
-  (fn [zloc] (block-indent zloc sym idx)))
+(defmethod indenter-fn :block [sym alias-map [_ idx]]
+  (fn [zloc] (block-indent zloc sym idx alias-map)))
 
-(defn- make-indenter [[key opts]]
-  (apply some-fn (map (partial indenter-fn key) opts)))
+(defn- make-indenter [[key opts] alias-map]
+  (apply some-fn (map (partial indenter-fn key alias-map) opts)))
 
 (defn- indent-order [[key _]]
   (cond
@@ -264,26 +266,26 @@
     (symbol? key) (str 1 key)
     (pattern? key) (str 2 key)))
 
-(defn- custom-indent [zloc indents]
+(defn- custom-indent [zloc indents alias-map]
   (if (empty? indents)
     (list-indent zloc)
     (let [indenter (->> (sort-by indent-order indents)
-                        (map make-indenter)
+                        (map #(make-indenter % alias-map))
                         (apply some-fn))]
       (or (indenter zloc)
           (list-indent zloc)))))
 
-(defn- indent-amount [zloc indents]
+(defn- indent-amount [zloc indents alias-map]
   (let [tag (-> zloc z/up z/tag)
         gp  (-> zloc z/up z/up)]
     (cond
       (reader-conditional? gp) (coll-indent zloc)
-      (#{:list :fn} tag)       (custom-indent zloc indents)
-      (= :meta tag)            (indent-amount (z/up zloc) indents)
+      (#{:list :fn} tag)       (custom-indent zloc indents alias-map)
+      (= :meta tag)            (indent-amount (z/up zloc) indents alias-map)
       :else                    (coll-indent zloc))))
 
-(defn- indent-line [zloc indents]
-  (let [width (indent-amount zloc indents)]
+(defn- indent-line [zloc indents alias-map]
+  (let [width (indent-amount zloc indents alias-map)]
     (if (> width 0)
       (zip/insert-right zloc (whitespace width))
       zloc)))
@@ -292,13 +294,17 @@
   ([form]
    (indent form default-indents))
   ([form indents]
-   (transform form edit-all should-indent? #(indent-line % indents))))
+   (transform form edit-all should-indent? #(indent-line % indents {})))
+  ([form indents alias-map]
+   (transform form edit-all should-indent? #(indent-line % indents alias-map))))
 
 (defn reindent
   ([form]
    (indent (unindent form)))
   ([form indents]
-   (indent (unindent form) indents)))
+   (indent (unindent form) indents))
+  ([form indents alias-map]
+   (indent (unindent form) indents alias-map)))
 
 (defn root? [zloc]
   (nil? (zip/up zloc)))
@@ -322,7 +328,8 @@
       (cond-> (:insert-missing-whitespace? opts true)
         insert-missing-whitespace)
       (cond-> (:indentation? opts true)
-        (reindent (:indents opts default-indents)))
+        (reindent (:indents opts default-indents)
+                  (:alias-map opts {})))
       (cond-> (:remove-trailing-whitespace? opts true)
         remove-trailing-whitespace)))
 
@@ -352,6 +359,9 @@
          (apply merge))))
 
 (defn reformat-string [form-string & [options]]
-  (-> (p/parse-string-all form-string)
-      (reformat-form options)
-      (n/string)))
+  (let [parsed-form (p/parse-string-all form-string)
+        alias-map (alias-map-for-form parsed-form)]
+    (-> parsed-form
+        (reformat-form (cond-> options
+                         alias-map (assoc :alias-map alias-map)))
+        (n/string))))
