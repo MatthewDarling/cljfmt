@@ -108,30 +108,30 @@ You can also configure the behavior of cljfmt:
   a map of var symbols to indentation rules, i.e. `{symbol [& rules]}`.
   See the next section for a detailed explanation.
 
-Unqualified symbols in the indents map will apply to any symbol with a
+  Unqualified symbols in the indents map will apply to any symbol with a
 matching "name" - so `foo` would apply to both `org.me/foo` and
 `com.them/foo`. If you want finer-grained control, you can use a fully
 qualified symbol in the indents map to configure indentation that
 applies only to `org.me/foo`:
 
-```clojure
-:cljfmt {:indents {org.me/foo [[:inner 0]]}}
-```
+  ```clojure
+  :cljfmt {:indents {org.me/foo [[:inner 0]]}}
+  ```
 
-Configured this way, `org.me/foo` will indent differently from
+  Configured this way, `org.me/foo` will indent differently from
 `com.them/foo`.
 
-Note that `cljfmt` currently doesn't resolve symbols brought into a
+  Note that `cljfmt` currently doesn't resolve symbols brought into a
 namespace using `:refer` or `:use` - they can only be controlled by an
 unqualified indent rule.
 
-As with Leiningen profiles, you can add metadata hints. If you want to
+  As with Leiningen profiles, you can add metadata hints. If you want to
 override all existing indents, instead of just supplying new indents
 that are merged with the defaults, you can use the `:replace` hint:
 
-```clojure
-:cljfmt {:indents ^:replace {#".*" [[:inner 0]]}}
-```
+  ```clojure
+  :cljfmt {:indents ^:replace {#".*" [[:inner 0]]}}
+  ```
 
 * `:alias-map` -
   a map of namespace alias strings to fully qualified namespace
@@ -140,12 +140,12 @@ that are merged with the defaults, you can use the `:replace` hint:
   useful for providing namespace-sensitive indentation of EDN files,
   or if you run `cljfmt` as a CLJS library.
 
-Should you need to use this option, it should look like this:
+  Should you need to use this option, it should look like this:
 
-```clojure
-:cljfmt {:indents {org.me/foo [[:inner 0]]}
-         :alias-map {"me" "org.me"}}
-```
+  ```clojure
+  :cljfmt {:indents {org.me/foo [[:inner 0]]}
+           :alias-map {"me" "org.me"}}
+  ```
 
 
 ### Indentation rules
