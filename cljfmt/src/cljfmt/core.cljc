@@ -348,8 +348,10 @@
 #?(:clj
    (defn- as-zloc->alias-mapping
      [as-zloc]
-     {(some-> as-zloc z/right z/sexpr str)
-      (some-> as-zloc z/left z/sexpr str)}))
+     (let [alias (some-> as-zloc z/right z/sexpr)
+           fully-qualified-name (some-> as-zloc z/left z/sexpr)]
+       (when (and (symbol? alias) (symbol? fully-qualified-name))
+         {(str alias) (str fully-qualified-name)}))))
 
 #?(:clj
    (defn- alias-map-for-form
