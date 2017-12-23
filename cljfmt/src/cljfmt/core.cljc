@@ -318,6 +318,31 @@
       (cond-> (:remove-trailing-whitespace? opts true)
         remove-trailing-whitespace)))
 
+(defn- require-node?
+  [node]
+  (and (-> node z/up z/value (= [:token 'ns]))
+       (-> node z/value (= [:token :require]))))
+
+(defn- as-node?
+  [node]
+  (and (= :token (z/tag node))
+       (= :as (z/value node))))
+
+(defn- as-zloc->alias-mapping
+  [as-zloc]
+  {(-> as-zloc z/right z/value str)
+   (-> as-zloc z/left z/value str)})
+
+(defn- alias-map-for-form
+  [form]
+  (when-let [require-zloc (-> form
+                              z/edn
+                              z/next
+                              (z/find require-node?))]
+    (->> (find-all require-zloc as-node?)
+         (map as-zloc->alias-mapping)
+         (apply merge))))
+
 (defn reformat-string [form-string & [options]]
   (-> (p/parse-string-all form-string)
       (reformat-form options)
