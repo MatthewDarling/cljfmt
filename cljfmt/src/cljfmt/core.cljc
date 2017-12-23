@@ -335,18 +335,18 @@
 
 (defn- require-node?
   [node]
-  (and (-> node z/up z/value (= [:token 'ns]))
-       (-> node z/value (= [:token :require]))))
+  (and (some-> node z/up z/child-sexprs first (= 'ns))
+       (some-> node z/child-sexprs first (= :require))))
 
 (defn- as-node?
   [node]
   (and (= :token (z/tag node))
-       (= :as (z/value node))))
+       (= :as (z/sexpr node))))
 
 (defn- as-zloc->alias-mapping
   [as-zloc]
-  {(-> as-zloc z/right z/value str)
-   (-> as-zloc z/left z/value str)})
+  {(some-> as-zloc z/right z/sexpr str)
+   (some-> as-zloc z/left z/sexpr str)})
 
 (defn- alias-map-for-form
   [form]
