@@ -364,7 +364,9 @@
 
 (defn reformat-string [form-string & [options]]
   (let [parsed-form (p/parse-string-all form-string)
-        alias-map #?(:clj (alias-map-for-form parsed-form) :cljs {})]
+        alias-map #?(:clj (or (:alias-map options)
+                              (alias-map-for-form parsed-form))
+                     :cljs (:alias-map options))]
     (-> parsed-form
         (reformat-form (cond-> options
                          alias-map (assoc :alias-map alias-map)))
