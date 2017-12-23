@@ -202,7 +202,7 @@
   (and (reader-macro? zloc) (#{"?" "?@"} (-> zloc z/down token-value str))))
 
 (defn- form-symbol [zloc]
-  (-> zloc z/leftmost token-value remove-namespace))
+  (-> zloc z/leftmost token-value))
 
 (defn- index-matches-top-argument? [zloc depth idx]
   (and (> depth 0)
@@ -210,7 +210,7 @@
 
 (defn- inner-indent [zloc key depth idx]
   (let [top (nth (iterate z/up zloc) depth)]
-    (if (and (indent-matches? key (form-symbol top))
+    (if (and (indent-matches? key (remove-namespace (form-symbol top)))
              (or (nil? idx) (index-matches-top-argument? zloc depth idx)))
       (let [zup (z/up zloc)]
         (+ (margin zup) (indent-width zup))))))
@@ -228,7 +228,7 @@
     true))
 
 (defn- block-indent [zloc key idx]
-  (if (indent-matches? key (form-symbol zloc))
+  (if (indent-matches? key (remove-namespace (form-symbol zloc)))
     (if (and (some-> zloc (nth-form (inc idx)) first-form-in-line?)
              (> (index-of zloc) idx))
       (inner-indent zloc key 0 nil)
