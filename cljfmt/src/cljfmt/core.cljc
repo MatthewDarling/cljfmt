@@ -349,7 +349,7 @@
    (defn- as-zloc->alias-mapping
      [as-zloc]
      (let [alias (some-> as-zloc z/right z/sexpr)
-           fully-qualified-name (some-> as-zloc z/left z/sexpr)]
+           fully-qualified-name (some-> as-zloc z/leftmost z/sexpr)]
        (when (and (symbol? alias) (symbol? fully-qualified-name))
          {(str alias) (str fully-qualified-name)}))))
 
