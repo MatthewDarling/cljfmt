@@ -365,9 +365,14 @@
    (defn- as-zloc->alias-mapping
      [as-zloc]
      (let [alias (some-> as-zloc z/right z/sexpr)
-           fully-qualified-name (some-> as-zloc z/leftmost z/sexpr)]
-       (when (and (symbol? alias) (symbol? fully-qualified-name))
-         {(str alias) (str fully-qualified-name)}))))
+           current-namespace (some-> as-zloc z/leftmost z/sexpr)
+           grandparent-node (some-> as-zloc z/up z/up)
+           parent-namespace (when-not (require-node? grandparent-node)
+                              (first (z/child-sexprs grandparent-node)))]
+       (when (and (symbol? alias) (symbol? current-namespace))
+         {(str alias) (if parent-namespace
+                        (format "%s.%s" parent-namespace current-namespace)
+                        (str current-namespace))}))))
 
 #?(:clj
    (defn- alias-map-for-form
