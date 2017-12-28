@@ -333,10 +333,26 @@
       (cond-> (:remove-trailing-whitespace? opts true)
         remove-trailing-whitespace)))
 
+(defn- top-level-containing-form
+  "Find the top-level form which contains `node`.
+
+   A namespace contains several top-level forms, and the root of a
+  zipper for that namespace will have all those forms as children. This
+  function finds the start of the subtree that contains `node`."
+  [node]
+  (->> node
+       (iterate z/up)
+       (take-while (complement root?))
+       last))
+
 #?(:clj
    (defn- require-node?
      [node]
-     (and (some-> node z/up z/child-sexprs first (= 'ns))
+     (and (some-> node
+                  top-level-containing-form
+                  z/child-sexprs
+                  first
+                  (= 'ns))
           (some-> node z/child-sexprs first (= :require)))))
 
 #?(:clj
