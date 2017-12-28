@@ -379,8 +379,7 @@
      [form]
      (when-let [require-zloc (-> form
                                  z/edn
-                                 z/next
-                                 (z/find require-node?))]
+                                 (z/find z/next require-node?))]
        (->> (find-all require-zloc as-node?)
             (map as-zloc->alias-mapping)
             (apply merge)))))
