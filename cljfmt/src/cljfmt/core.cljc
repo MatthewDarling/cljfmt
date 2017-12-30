@@ -215,9 +215,31 @@
             (name possible-sym))
     possible-sym))
 
+(defn- all-potential-symbol-referents
+  "If `possible-sym` is a symbol with a namespace, return a seq of
+  possible referents based on the set of alias values in `alias-map`.
+
+  Reader conditionals can lead to the same alias referring to
+  different namespaces depending on environment. So all the different
+  referents need to be checked."
+  [possible-sym alias-map]
+  (if-let [ns-string (and (symbol? possible-sym)
+                          (namespace possible-sym))]
+    (map #(symbol % (name possible-sym))
+         (get alias-map ns-string [ns-string]))
+    [possible-sym]))
+
+(defn- indent-matches-after-alias?
+  "Check if `sym` matches `key` using the matching namespace aliases
+  in `alias-map`. Picks the first matching namespace alias without any
+  guaranteed order."
+  [key sym alias-map]
+  (some #(indent-matches? key %)
+        (all-potential-symbol-referents sym alias-map)))
+
 (defn- inner-indent [zloc key depth idx alias-map]
   (let [top (nth (iterate z/up zloc) depth)]
-    (if (and (or (indent-matches? key (fully-qualify-symbol (form-symbol top) alias-map))
+    (if (and (or (indent-matches-after-alias? key (form-symbol top) alias-map)
                  (indent-matches? key (remove-namespace (form-symbol top))))
              (or (nil? idx) (index-matches-top-argument? zloc depth idx)))
       (let [zup (z/up zloc)]
@@ -236,7 +258,7 @@
     true))
 
 (defn- block-indent [zloc key idx alias-map]
-  (if (or (indent-matches? key (fully-qualify-symbol (form-symbol zloc) alias-map))
+  (if (or (indent-matches-after-alias? key (form-symbol zloc) alias-map)
           (indent-matches? key (remove-namespace (form-symbol zloc))))
     (if (and (some-> zloc (nth-form (inc idx)) first-form-in-line?)
              (> (index-of zloc) idx))
@@ -363,6 +385,14 @@
 
 #?(:clj
    (defn- as-zloc->alias-mapping
+     "Given the zipper location of a form like this, currently pointing
+  to `:as`:
+
+  [clojure.string :as str :refer [split]]
+
+  Return a map like this:
+
+  {:alias 'str' :fully-qualified-name 'clojure.string'}"
      [as-zloc]
      (let [alias (some-> as-zloc z/right z/sexpr)
            current-namespace (some-> as-zloc z/leftmost z/sexpr)
@@ -370,9 +400,24 @@
            parent-namespace (when-not (require-node? grandparent-node)
                               (first (z/child-sexprs grandparent-node)))]
        (when (and (symbol? alias) (symbol? current-namespace))
-         {(str alias) (if parent-namespace
-                        (format "%s.%s" parent-namespace current-namespace)
-                        (str current-namespace))}))))
+         {:alias (str alias)
+          :fully-qualified-name (if parent-namespace
+                                  (format "%s.%s" parent-namespace current-namespace)
+                                  (str current-namespace))}))))
+
+(defn- unique-alias-referents
+  "Use with `reduce-kv` to convert this:
+
+  {'str' [{:alias 'str' :fully-qualified-name 'clojure.string'}
+          {:alias 'str' :fully-qualified-name 'goog.string'}]}
+
+  Into this:
+
+  {'str' #{'clojure.string' 'goog.string'}}"
+  [acc alias-str alias-mappings]
+  (assoc acc
+         alias-str
+         (set (map :fully-qualified-name alias-mappings))))
 
 #?(:clj
    (defn- alias-map-for-form
@@ -382,7 +427,8 @@
                                  (z/find z/next require-node?))]
        (->> (find-all require-zloc as-node?)
             (map as-zloc->alias-mapping)
-            (apply merge)))))
+            (group-by :alias)
+            (reduce-kv unique-alias-referents {})))))
 
 (defn reformat-string [form-string & [options]]
   (let [parsed-form (p/parse-string-all form-string)
