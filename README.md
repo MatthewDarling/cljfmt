@@ -109,25 +109,25 @@ You can also configure the behavior of cljfmt:
   See the next section for a detailed explanation.
 
   Unqualified symbols in the indents map will apply to any symbol with a
-matching "name" - so `foo` would apply to both `org.me/foo` and
-`com.them/foo`. If you want finer-grained control, you can use a fully
-qualified symbol in the indents map to configure indentation that
-applies only to `org.me/foo`:
+  matching "name" - so `foo` would apply to both `org.me/foo` and
+  `com.them/foo`. If you want finer-grained control, you can use a fully
+  qualified symbol in the indents map to configure indentation that
+  applies only to `org.me/foo`:
 
   ```clojure
   :cljfmt {:indents {org.me/foo [[:inner 0]]}}
   ```
 
   Configured this way, `org.me/foo` will indent differently from
-`com.them/foo`.
+  `com.them/foo`.
 
   Note that `cljfmt` currently doesn't resolve symbols brought into a
-namespace using `:refer` or `:use` - they can only be controlled by an
-unqualified indent rule.
+  namespace using `:refer` or `:use` - they can only be controlled by an
+  unqualified indent rule.
 
   As with Leiningen profiles, you can add metadata hints. If you want to
-override all existing indents, instead of just supplying new indents
-that are merged with the defaults, you can use the `:replace` hint:
+  override all existing indents, instead of just supplying new indents
+  that are merged with the defaults, you can use the `:replace` hint:
 
   ```clojure
   :cljfmt {:indents ^:replace {#".*" [[:inner 0]]}}
@@ -137,7 +137,9 @@ that are merged with the defaults, you can use the `:replace` hint:
   a map of namespace alias strings to fully qualified namespace
   names. This option is unnecessary in almost all cases, because
   `cljfmt` can compute the alias map from an `ns`
-  declaration. However, it can't do that when used as a CLJS library,
+  declaration.
+
+  However, it can't do that when used as a CLJS library,
   or when indenting something with no `ns` declaration like an EDN
   file. Even in those situations, you only need this option when using
   indentation rules that rely on the fully qualified symbol name.
