@@ -1,7 +1,8 @@
 (ns cljfmt.core-test
   (:require [#?@(:clj (clojure.test :refer)
                  :cljs (cljs.test :refer-macros)) [deftest testing is]]
-            [cljfmt.core :refer [reformat-string]]))
+            [cljfmt.core :refer [reformat-string]]
+            [clojure.string :as str]))
 
 (deftest test-indent
   (testing "list indentation"
@@ -65,14 +66,54 @@
            "(t/defn foo [x]\n  (+ x 1))"))
     (is (= (reformat-string "(t/defrecord Foo [x]\nCloseable\n(close [_]\n(prn x)))")
            "(t/defrecord Foo [x]\n  Closeable\n  (close [_]\n    (prn x)))"))
-    (is (= (reformat-string "(ns example\n(:require [thing.core :as t]))\n\n(t/defn foo [x]\n(+ x 1))\n\n(defn foo [x]\n(+ x 1))"
-                            {:indents {'thing.core/defn [[:inner 0]]}
-                             #?@(:cljs [:alias-map {"t" "thing.core"}])})
-           "(ns example\n    (:require [thing.core :as t]))\n\n(t/defn foo [x]\n  (+ x 1))\n\n(defn foo [x]\n      (+ x 1))"))
-    (is (= (reformat-string "(ns example\n(:require [thing.core :as t]))\n\n(t/defrecord Foo [x]\nCloseable\n(close [_]\n(prn x)))\n\n(defrecord Foo [x]\nCloseable\n(close [_]\n(prn x)))"
-                            {:indents {'thing.core/defrecord [[:inner 0]]}
-                             #?@(:cljs [:alias-map {"t" "thing.core"}])})
-           "(ns example\n    (:require [thing.core :as t]))\n\n(t/defrecord Foo [x]\n  Closeable\n  (close [_]\n         (prn x)))\n\n(defrecord Foo [x]\n           Closeable\n           (close [_]\n                  (prn x)))")))
+    (is (= (-> ["(ns example"
+                "(:require [thing.core :as t]))"
+                ""
+                "(t/defn foo [x]"
+                "(+ x 1))"
+                ""
+                "(defn foo [x]"
+                "(+ x 1))"]
+               (->> (str/join "\n"))
+               (reformat-string {:indents {'thing.core/defn [[:inner 0]]}
+                                 #?@(:cljs [:alias-map {"t" "thing.core"}])})
+               str/split-lines)
+           ["(ns example"
+            "    (:require [thing.core :as t]))"
+            ""
+            "(t/defn foo [x]"
+            "  (+ x 1))"
+            ""
+            "(defn foo [x]"
+            "      (+ x 1))"]))
+    (is (= (-> ["(ns example"
+                "(:require [thing.core :as t]))"
+                ""
+                "(t/defrecord Foo [x]"
+                "Closeable"
+                "(close [_]"
+                "(prn x)))"
+                ""
+                "(defrecord Foo [x]"
+                "Closeable"
+                "(close [_]"
+                "(prn x)))"]
+               (->> (str/join "\n"))
+               (reformat-string {:indents {'thing.core/defrecord [[:inner 0]]}
+                                 #?@(:cljs [:alias-map {"t" "thing.core"}])})
+               str/split-lines)
+           ["(ns example"
+            "    (:require [thing.core :as t]))"
+            ""
+            "(t/defrecord Foo [x]"
+            "  Closeable"
+            "  (close [_]"
+            "         (prn x)))"
+            ""
+            "(defrecord Foo [x]"
+            "           Closeable"
+            "           (close [_]"
+            "                  (prn x)))"])))
 
   (testing "function #() syntax"
     (is (= (reformat-string "#(while true\n(println :foo))")
