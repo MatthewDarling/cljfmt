@@ -333,54 +333,42 @@
       (cond-> (:remove-trailing-whitespace? opts true)
         remove-trailing-whitespace)))
 
-(defn- top-level-containing-form
-  "Find the top-level form which contains `node`.
-
-   A namespace contains several top-level forms, and the root of a
-  zipper for that namespace will have all those forms as children. This
-  function finds the start of the subtree that contains `node`."
-  [node]
-  (->> node
+(defn- top-level-form [zloc]
+  (->> zloc
        (iterate z/up)
        (take-while (complement root?))
        last))
 
 #?(:clj
-   (defn- require-node?
-     [node]
-     (and (some-> node
-                  top-level-containing-form
+   (defn- ns-require-form? [zloc]
+     (and (some-> zloc
+                  top-level-form
                   z/child-sexprs
                   first
                   (= 'ns))
-          (some-> node z/child-sexprs first (= :require)))))
+          (some-> zloc z/child-sexprs first (= :require)))))
 
 #?(:clj
-   (defn- as-node?
-     [node]
-     (and (= :token (z/tag node))
-          (= :as (z/sexpr node)))))
+   (defn- as-keyword? [zloc]
+     (and (= :token (z/tag zloc))
+          (= :as (z/sexpr zloc)))))
 
 #?(:clj
-   (defn- as-zloc->alias-mapping
-     [as-zloc]
-     (let [alias (some-> as-zloc z/right z/sexpr)
+   (defn- as-zloc->alias-mapping [as-zloc]
+     (let [alias             (some-> as-zloc z/right z/sexpr)
            current-namespace (some-> as-zloc z/leftmost z/sexpr)
-           grandparent-node (some-> as-zloc z/up z/up)
-           parent-namespace (when-not (require-node? grandparent-node)
-                              (first (z/child-sexprs grandparent-node)))]
+           grandparent-node  (some-> as-zloc z/up z/up)
+           parent-namespace  (when-not (ns-require-form? grandparent-node)
+                               (first (z/child-sexprs grandparent-node)))]
        (when (and (symbol? alias) (symbol? current-namespace))
          {(str alias) (if parent-namespace
                         (format "%s.%s" parent-namespace current-namespace)
                         (str current-namespace))}))))
 
 #?(:clj
-   (defn- alias-map-for-form
-     [form]
-     (when-let [require-zloc (-> form
-                                 z/edn
-                                 (z/find z/next require-node?))]
-       (->> (find-all require-zloc as-node?)
+   (defn- alias-map-for-form [form]
+     (when-let [require-zloc (-> form z/edn (z/find z/next ns-require-form?))]
+       (->> (find-all require-zloc as-keyword?)
             (map as-zloc->alias-mapping)
             (apply merge)))))
 
